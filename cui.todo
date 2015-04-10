@@ -1,0 +1,12 @@
+Character UI Pending tasks
+
+ ✔ Implement resizing the sliders @done (15-04-08 19:28)
+ ✔ Add attribute selection for attribute-driving controls (sliders, checkboxes) @done (15-04-08 20:07)
+ ✔ Add maya.commands support for custom scripts @done (15-04-09 14:33)
+ ✔ Add automatic update of the UI controls when the window is not focused @done (15-04-09 15:07)
+ ✔ Add CUI API methods (showByCid, hideByCid, showByTag, hideByTag, selectByTag, updateControls) @done (15-04-09 15:34)
+ ☐ Add multiple window support for viewer (with tabs drag-n-drop)
+ ☐ Add rectangle selection
+ ☐ Perform refactoring
+ ☐ Add Duplication tool
+ ☐ Add Spinbox control

@@ -33,11 +33,11 @@ class CUIBuilder(QDialog):
     self.controls = {}
     self.currentCid = -1
     self.placingState = State.idle
-    self.widgetUnderSetup = None
+    self.focusedControl = None
     self.characterName = None
     self.background = None
 
-    self.toolbar = CUIToolBar(self)
+    self.toolbar = ui.CUIToolBar(self)
 
     self.toolbar.save.clicked.connect(self.save)
     self.toolbar.load.clicked.connect(self.load)
@@ -63,12 +63,15 @@ class CUIBuilder(QDialog):
       if event.button() == Qt.LeftButton:
         self.newSlider(position)
       elif event.button() == Qt.RightButton:
-        if isinstance(self.widgetUnderSetup, widgets.Slider):
-          self.widgetUnderSetup.is_vertical = not self.widgetUnderSetup.is_vertical
-          self.widgetUnderSetup.updateGeometry()
+        if isinstance(self.focusedControl, widgets.Slider):
+          self.focusedControl.is_vertical = not self.focusedControl.is_vertical
+          self.focusedControl.updateGeometry()
 
     elif self.toolbar.checkbox.isChecked():
       self.newCheckbox(position)
+
+    elif self.toolbar.duplicate.isChecked():
+      self.duplicateControl(self.focusedControl, position)
 
   def mouseMoveEvent(self, event):
     lockX = QApplication.keyboardModifiers() == Qt.AltModifier
@@ -78,10 +81,10 @@ class CUIBuilder(QDialog):
     if self.placingState == State.placing_new or self.placingState == State.moving:
       pos = self.mapFromGlobal(event.globalPos())-QPoint(10,10) if self.placingState == State.placing_new else event.pos()
       offset = pos - self.moveOrigin
-      newPos = self.widgetUnderSetup.pos + offset
+      newPos = self.focusedControl.pos + offset
       if snap:
         nextNode = utils.nextGridNode(pos, offset, 20)
-        self.widgetUnderSetup.move(nextNode)
+        self.focusedControl.move(nextNode)
         return
 
       elif lockX:
@@ -91,7 +94,7 @@ class CUIBuilder(QDialog):
         offset.setX(0)
         newPos -= offset
 
-      self.widgetUnderSetup.move(newPos)
+      self.focusedControl.move(newPos)
       self.moveOrigin = pos
 
   def mouseReleaseEvent(self, event):
@@ -99,49 +102,39 @@ class CUIBuilder(QDialog):
       self.modified = True
     self.placingState = State.idle
 
+  def mirrorControl(self, control):
+    w = self.width()
+    pos = control.pos
+    mirroredPosition = QPoint(w - pos.x(), pos.y()) - QPoint(control.widget.width(), 0)
+    mirroredControl = self.duplicateControl(control, mirroredPosition)
+
+  def duplicateControl(self, control, newPos):
+    copy = control.serialize()
+    controlType = copy.keys()[0]
+
+    if controlType == "selector":
+      newWidget = self.newSelector(newPos)
+
+    elif controlType == "command_button":
+      newWidget = self.newCommandButton(newPos)
+
+    elif controlType == "checkbox":
+      newWidget = self.newCheckbox(newPos)
+
+    elif controlType == "slider":
+      newWidget = self.newSlider(newPos)
+
+    newWidget.deserialize(copy[controlType], duplicate=True)
+    newWidget.setup()
+    return newWidget
+
   def onWidgetTriggered(self):
     widget = self.sender()
     self.modified = True
+    self.focusedControl = widget
 
-    if self.toolbar.move_.isChecked():
-      self.widgetUnderSetup = widget
-
-    elif self.toolbar.mirror.isChecked():
-      w = self.width()
-      pos = widget.pos
-      mirroredPosition = QPoint(w - pos.x(), pos.y()) - QPoint(widget.widget.width(), 0)
-
-      if isinstance(widget, widgets.Selector):
-        selector = self.newSelector()
-        copy = widget.serialize()
-        selector.deserialize(copy["selector"])
-        selector.cid = cid
-        selector.move(mirroredPosition)
-        selector.setup()
-      
-      elif isinstance(widget, widgets.CommandButton):
-        cmdButton = self.newCommandButton(mirroredPosition)
-        copy = widget.serialize()
-        cmdButton.deserialize(copy["command_button"])
-        cmdButton.cid = cid
-        cmdButton.move(mirroredPosition)
-        cmdButton.setup()
-      
-      elif isinstance(widget, widgets.CheckBox):
-        checkbox = self.newCheckbox(mirroredPosition)
-        copy = widget.serialize()
-        checkbox.deserialize(copy["checkbox"])
-        checkbox.cid = cid
-        checkbox.move(mirroredPosition)
-        checkbox.setup()
-
-      elif isinstance(widget, widgets.Slider):
-        slider = self.newSlider(mirroredPosition)
-        copy = widget.serialize()
-        slider.deserialize(copy["slider"])
-        slider.cid = cid
-        slider.move(mirroredPosition)
-        slider.setup()
+    if self.toolbar.mirror.isChecked():
+      self.mirrorControl(widget)
 
     elif self.toolbar.setup.isChecked():
       if isinstance(widget, widgets.Selector):
@@ -175,7 +168,7 @@ class CUIBuilder(QDialog):
     self.controls[cid] = newSelector
     newSelector.clicked.connect(self.onWidgetTriggered)
 
-    self.widgetUnderSetup = newSelector
+    self.focusedControl = newSelector
     self.moveOrigin = pos
     self.placingState = State.placing_new
     return newSelector
@@ -191,7 +184,7 @@ class CUIBuilder(QDialog):
     self.controls[cid] = newCommandButton
     newCommandButton.clicked.connect(self.onWidgetTriggered)
       
-    self.widgetUnderSetup = newCommandButton
+    self.focusedControl = newCommandButton
     self.moveOrigin = pos
     self.placingState = State.placing_new
     return newCommandButton
@@ -207,7 +200,7 @@ class CUIBuilder(QDialog):
     self.controls[cid] = newSlider
     newSlider.released.connect(self.onWidgetTriggered)
 
-    self.widgetUnderSetup = newSlider
+    self.focusedControl = newSlider
     self.moveOrigin = pos
     self.placingState = State.placing_new
     return newSlider
@@ -223,15 +216,12 @@ class CUIBuilder(QDialog):
     self.controls[cid] = newCheckBox
     newCheckBox.stateChanged.connect(self.onWidgetTriggered)
 
-    self.widgetUnderSetup = newCheckBox
+    self.focusedControl = newCheckBox
     self.moveOrigin = pos
     self.placingState = State.placing_new
-    return newCheckbox
+    return newCheckBox
 
   def save(self):
-    rootDir = pm.workspace(q=1, rd=1)
-    charDir = rootDir+"characters"
-    pm.workspace.mkdir(charDir)
     if self.characterName is None:
       userInput = QInputDialog.getText(self, "Character Name", "Character Name")
       if userInput[1]:
@@ -240,7 +230,7 @@ class CUIBuilder(QDialog):
         pm.warning("You must specify character name before saving")
         return
     
-    result = QFileDialog.getSaveFileName(self, "Save", charDir, "CUI files (*.cui)")
+    result = QFileDialog.getSaveFileName(self, "Save", utils.charactersDir(), "CUI files (*.cui)")
     
     if result[1]:
       fileName = result[0]
@@ -261,13 +251,14 @@ class CUIBuilder(QDialog):
 
     self.modified = False
 
+  def addControl(self, control):
+    self.controls[control.cid] = control
+
   def load(self):
     if not self.failSafe():
       return
 
-    rootDir = pm.workspace(q=1, rd=1)
-    charDir = rootDir+"characters"
-    result = QFileDialog.getOpenFileName(self, "Open", charDir, "CUI files (*.cui)")
+    result = QFileDialog.getOpenFileName(self, "Open", utils.charactersDir(), "CUI files (*.cui)")
     if result[1]:
       fileName = result[0]
     else:
@@ -281,23 +272,30 @@ class CUIBuilder(QDialog):
     self.characterName = jsonData["name"]
     self.background = jsonData["background_image"]
     self.updateBackground()
+
     for ctrl in jsonData["controls"]:
-      if ctrl.keys()[0] == "selector":
-        selector = self.newSelector(cid=ctrl["selector"]["cid"])
-        selector.deserialize(ctrl["selector"])
-        selector.setup()
-      elif ctrl.keys()[0] == "slider":
-        slider = self.newSlider(cid=ctrl["slider"]["cid"])
-        slider.deserialize(ctrl["slider"])
-        slider.setup()
-      elif ctrl.keys()[0] == "command_button":
-        cmdButton = self.newCommandButton(cid=ctrl["command_button"]["cid"])
-        cmdButton.deserialize(ctrl["command_button"])
-        cmdButton.setup()
-      elif ctrl.keys()[0] == "checkbox":
-        checkbox = self.newCheckbox(cid=ctrl["checkbox"]["cid"])
-        checkbox.deserialize(ctrl["checkbox"])
-        checkbox.setup()
+      controlType = ctrl.keys()[0]
+      control = ctrl[controlType]
+
+      if controlType == "selector":
+        widget = widgets.Selector(self)
+        widget.clicked.connect(self.onWidgetTriggered)
+
+      elif controlType == "slider":
+        widget = widgets.Slider(self)
+        widget.valueChanged.connect(self.onWidgetTriggered)
+        
+      elif controlType == "command_button":
+        widget = widgets.CommandButton(self)
+        widget.clicked.connect(self.onWidgetTriggered)
+
+      elif controlType == "checkbox":
+        widget = widgets.CheckBox(self)
+        widget.stateChanged.connect(self.onWidgetTriggered)
+
+      widget.deserialize(control)
+      widget.setup(client=False)
+      self.addControl(widget)
 
   def paintEvent(self, event):
     opt = QStyleOption()
@@ -329,21 +327,17 @@ class CUIBuilder(QDialog):
     if self.background is None:
       return
 
-    rootDir = pm.workspace(q=1, rd=1)
-    charDir = rootDir+"characters/"
-    imagePath = charDir+self.background
+    imagePath = utils.charactersDir()+self.background
     self.setStyleSheet("#CUIMainWindow {background-image: url(%s); background-repeat: none;}" % imagePath)
     
   def setBackground(self):
-    rootDir = pm.workspace(q=1, rd=1)
-    charDir = rootDir+"characters/"
-    result = QFileDialog.getOpenFileName(self, "Open", charDir, "Image files (*.png *jpg)")
+    result = QFileDialog.getOpenFileName(self, "Open", utils.charactersDir(), "Image files (*.png *jpg)")
     if not result[1]:
       return
 
     sourcePath = result[0]
     fileName = sourcePath.split('/')[-1]
-    localPath = charDir+fileName
+    localPath = utils.charactersDir()+fileName
 
     try:
       shutil.copyfile(sourcePath, localPath)
@@ -352,97 +346,3 @@ class CUIBuilder(QDialog):
 
     self.background = fileName
     self.updateBackground()
-
-
-class CUIToolBar(QDialog):
-  def __init__(self, parent):
-    super(CUIToolBar, self).__init__(parent)
-    
-    self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
-    self.setWindowTitle("Tools")
-
-    self.setFixedSize(100, 350)
-    self.layout = QVBoxLayout(self)
-    self.setLayout(self.layout)
-    self.grp = QButtonGroup(self)
-
-    self.load = QToolButton(self)
-    self.load.setText("Load")
-    self.layout.addWidget(self.load)
-    self.load.setMinimumSize(80, 25)
-
-    self.save = QToolButton(self)
-    self.save.setText("Save")
-    self.layout.addWidget(self.save)
-    self.save.setMinimumSize(80, 25)
-
-    self.background = QToolButton(self)
-    self.background.setText("Set BG")
-    self.layout.addWidget(self.background)
-    self.background.setMinimumSize(80, 25)
-
-    self.idle = QToolButton(self)
-    self.idle.setCheckable(True)
-    self.idle.setChecked(True)
-    self.idle.setText("Idle")
-    self.layout.addWidget(self.idle)
-    self.idle.setMinimumSize(80, 25)
-
-    self.move_ = QToolButton(self)
-    self.move_.setCheckable(True)
-    self.move_.setText("Move")
-    self.layout.addWidget(self.move_)
-    self.move_.setMinimumSize(80, 25)
-
-    self.remove = QToolButton(self)
-    self.remove.setCheckable(True)
-    self.remove.setText("Remove")
-    self.layout.addWidget(self.remove)
-    self.remove.setMinimumSize(80, 25)
-    
-    self.mirror = QToolButton(self)
-    self.mirror.setCheckable(True)
-    self.mirror.setText("Mirror")
-    self.layout.addWidget(self.mirror)
-    self.mirror.setMinimumSize(80, 25)
-
-    self.setup = QToolButton(self)
-    self.setup.setCheckable(True)
-    self.setup.setText("Setup")
-    self.layout.addWidget(self.setup)
-    self.setup.setMinimumSize(80, 25)
-
-    self.selector = QToolButton(self)
-    self.selector.setCheckable(True)
-    self.selector.setText("Selector")
-    self.layout.addWidget(self.selector)
-    self.selector.setMinimumSize(80, 25)
-
-    self.checkbox = QToolButton(self)
-    self.checkbox.setCheckable(True)
-    self.checkbox.setText("Checkbox")
-    self.layout.addWidget(self.checkbox)
-    self.checkbox.setMinimumSize(80, 25)
-
-    self.slider = QToolButton(self)
-    self.slider.setCheckable(True)
-    self.slider.setText("Slider")
-    self.layout.addWidget(self.slider)
-    self.slider.setMinimumSize(80, 25)
-    
-    self.command = QToolButton(self)
-    self.command.setCheckable(True)
-    self.command.setText("Command")
-    self.layout.addWidget(self.command)
-    self.command.setMinimumSize(80, 25)
-    
-    self.grp.addButton(self.move_)
-    self.grp.addButton(self.checkbox)
-    self.grp.addButton(self.command)
-    self.grp.addButton(self.setup)
-    self.grp.addButton(self.selector)
-    self.grp.addButton(self.slider)
-    self.grp.addButton(self.mirror)
-    self.grp.addButton(self.remove)
-    self.grp.addButton(self.idle)
-    self.grp.setExclusive(True)

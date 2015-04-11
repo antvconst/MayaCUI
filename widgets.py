@@ -2,7 +2,7 @@ from PySide.QtGui import *
 from PySide.QtCore import *
 import os
 import pymel.core as pm
-from utils import *
+import utils
 
 DEFAULT_COMMAND_BUTTON_CODE = """def clicked():
   pass
@@ -62,11 +62,27 @@ class Selector(BaseControl):
     with open(os.path.abspath(os.path.dirname(__file__)) + '\\selector.qss', 'r') as qss_file:
       self.stylesheet = qss_file.read()
 
-    self.redraw()
     self.setup()
     self.widget.show()
     
     self.widget.clicked.connect(self.onWidgetTriggered)
+
+  def colorCode(self):
+    if self.override_color:
+      try:
+        top_obj = pm.PyNode(self.target_objs[0])
+      except:
+        pm.warning("Object {} not found. Make sure the correct scene is loaded.".format(self.target_objs[0]))
+        return
+      color = utils.getOverrideColor(top_obj)
+      if color:
+        self.color = color
+
+  def action(self):
+    if QApplication.keyboardModifiers() == Qt.ShiftModifier:
+      pm.select(self.target_objs, add=1)
+    else:
+      pm.select(self.target_objs)
 
   def onWidgetTriggered(self):
     self.clicked.emit()
@@ -74,8 +90,8 @@ class Selector(BaseControl):
   def redraw(self):
     args = {
       "color": self.color,
-      "brighter": brighter(self.color),
-      "darker": darker(self.color),
+      "brighter": utils.brighter(self.color),
+      "darker": utils.darker(self.color),
       "radius": self.radius,
       "double_radius": self.radius * 2,
     }
@@ -95,22 +111,26 @@ class Selector(BaseControl):
         "radius": self.radius
       }
     }
-  def deserialize(self, json):
-    self.cid = json["cid"]
+  def deserialize(self, json, duplicate=False):
+    if not duplicate:
+      self.cid = json["cid"]
+      self.pos = QPoint(json["pos_x"], json["pos_y"])
+
     self.target_objs = json["target_objs"]
     self.color = json["color"]
     self.tags = json["tags"]
     self.override_color = json["override_color"]
     self.tooltip = json["tooltip"]
-    self.pos = QPoint(json["pos_x"], json["pos_y"])
     self.radius = json.get("radius", 10)
 
   def setup(self, client=False):
-    self.redraw()
-    self.move(self.pos)
-
     if client:
       self.widget.setToolTip(self.tooltip)
+      self.colorCode()
+      self.clicked.connect(self.action)
+      
+    self.redraw()
+    self.move(self.pos)
 
 
 class CommandButton(BaseControl):
@@ -127,6 +147,7 @@ class CommandButton(BaseControl):
     self.height = 20
     self.width = 60
     self.function = None
+    self.parent = p
     
     self.widget = QPushButton(p)
     self.setup()
@@ -153,11 +174,13 @@ class CommandButton(BaseControl):
       }
     }
 
-  def deserialize(self, json):
-    self.cid = json["cid"]
+  def deserialize(self, json, duplicate=False):
+    if not duplicate:
+      self.cid = json["cid"]
+      self.pos = QPoint(json["pos_x"], json["pos_y"])
+
     self.cmd = json["cmd"]
     self.label = json["label"]
-    self.pos = QPoint(json["pos_x"], json["pos_y"])
     self.tags = json["tags"]
     self.height = json["height"]
     self.width = json["width"]
@@ -170,6 +193,17 @@ class CommandButton(BaseControl):
 
     if client:
       self.widget.setToolTip(self.tooltip)
+      self.clicked.connect(self.action)
+
+  def action(self):
+    if self.function is None:
+      try:
+        self.function = utils.compileFunctions(self.cmd, ["clicked"], self.parent.symbols)[0]
+      except Exception:
+        pm.warning("Could not compile commands for this control. Please, check the code")
+        return
+
+    self.function()
 
 
 class Slider(BaseControl):
@@ -192,9 +226,7 @@ class Slider(BaseControl):
     self.length = 80
 
     self.widget = QSlider(p)
-    self.widget.setValue(self.default_val)
     self.widget.setMaximum(100)
-    self.updateGeometry()
     self.widget.setToolTip("Control ID: {}".format(self.cid))
     self.setup()
     self.widget.show()
@@ -237,14 +269,16 @@ class Slider(BaseControl):
         }
     }
 
-  def deserialize(self, json):
-    self.cid = json["cid"]
+  def deserialize(self, json, duplicate=False):
+    if not duplicate:
+      self.cid = json["cid"]
+      self.pos = QPoint(json["pos_x"], json["pos_y"])
+
     self.is_vertical = json["is_vertical"]
     self.target_attr = json["target_attr"]
     self.min_attr_val = json["min_attr_val"]
     self.max_attr_val = json["max_attr_val"]
     self.clamp_to_int = json["clamp_to_int"]
-    self.pos = QPoint(json["pos_x"], json["pos_y"])
     self.tags = json["tags"]
     self.default_val = json["default_val"]
     self.tooltip = json["tooltip"]
@@ -257,6 +291,26 @@ class Slider(BaseControl):
     if client:
       self.widget.setValue(self.default_val)
       self.widget.setToolTip(self.tooltip)
+      self.valueChanged.connect(self.valueChangedAction)
+      self.released.connect(self.releasedAction)
+
+  def valueChangedAction(self):
+    if not self.target_attr:
+      pm.warning("No attribute assigned to this slider")
+      return
+
+    range_ = self.max_attr_val - self.min_attr_val
+    step = range_/100
+    val = self.min_attr_val + self.value() * step
+
+    if self.clamp_to_int:
+      val = round(val)
+    
+    utils.undoable_open()
+    pm.setAttr(self.target_attr, val)
+
+  def releasedAction(self):
+    utils.undoable_close()
 
   def updateControl(self):
     range_ = self.max_attr_val - self.min_attr_val
@@ -283,6 +337,7 @@ class CheckBox(BaseControl):
     self.tooltip = ""
     self.on_cmd = None
     self.off_cmd = None
+    self.parent = p
     
     self.widget = QCheckBox(self.label, p)
     self.widget.setToolTip("Control ID: {}".format(self.cid))
@@ -305,6 +360,29 @@ class CheckBox(BaseControl):
     if client:
       self.widget.setToolTip(self.tooltip)
       self.widget.setChecked(self.default_state)
+      self.stateChanged.connect(self.toggledAction)
+
+  def toggledAction(self):
+    if self.is_dir_ctrl:
+      if not self.target_attr:
+        pm.warning("No attribute assigned to this checkbox")
+        return
+      pm.setAttr(self.target_attr, self.isChecked())
+
+    else:
+      if not (self.on_cmd and self.off_cmd):
+        try:
+          funcs = utils.compileFunctions(self.cmd, ["on", "off"], self.parent.symbols)
+          self.on_cmd = funcs[0]
+          self.off_cmd = funcs[1]
+        except Exception:
+          pm.warning("Could not compile commands for this control. Please, check the code")
+          return
+
+      if self.isChecked():
+        self.on_cmd()
+      else:
+        self.off_cmd()
 
   def serialize(self):
     return {
@@ -322,12 +400,14 @@ class CheckBox(BaseControl):
       }
     }
 
-  def deserialize(self, json):
-    self.cid = json["cid"]
+  def deserialize(self, json, duplicate=False):
+    if not duplicate:
+      self.cid = json["cid"]
+      self.pos = QPoint(json["pos_x"], json["pos_y"])
+
     self.cmd = json["cmd"]
     self.is_dir_ctrl = json["is_dir_ctrl"]
     self.target_attr = json["target_attr"]
-    self.pos = QPoint(json["pos_x"], json["pos_y"])
     self.default_state = json["default_state"]
     self.label = json["label"]
     self.tags = json["tags"]

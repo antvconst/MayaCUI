@@ -284,7 +284,7 @@ class Ui_sliderDialog(object):
     def retranslateUi(self, sliderDialog):
         sliderDialog.setWindowTitle(QtGui.QApplication.translate("sliderDialog", "Slider", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("sliderDialog", "Attribute:", None, QtGui.QApplication.UnicodeUTF8))
-        self.loadButton.setText(QtGui.QApplication.translate("sliderDialog", "Load object", None, QtGui.QApplication.UnicodeUTF8))
+        self.loadButton.setText(QtGui.QApplication.translate("sliderDialog", "Load", None, QtGui.QApplication.UnicodeUTF8))
         self.label_2.setText(QtGui.QApplication.translate("sliderDialog", "Minimum attribute value:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("sliderDialog", "Maximum attribute value:", None, QtGui.QApplication.UnicodeUTF8))
         self.label_4.setText(QtGui.QApplication.translate("sliderDialog", "Default slider value:", None, QtGui.QApplication.UnicodeUTF8))
@@ -375,8 +375,108 @@ class Ui_checkboxDialog(object):
         self.tagsEdit.setPlaceholderText(QtGui.QApplication.translate("checkboxDialog", "space separated", None, QtGui.QApplication.UnicodeUTF8))
         self.directControlRadio.setText(QtGui.QApplication.translate("checkboxDialog", "Control attribute directly", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("checkboxDialog", "Attribute:", None, QtGui.QApplication.UnicodeUTF8))
-        self.loadButton.setText(QtGui.QApplication.translate("checkboxDialog", "Load object", None, QtGui.QApplication.UnicodeUTF8))
+        self.loadButton.setText(QtGui.QApplication.translate("checkboxDialog", "Load", None, QtGui.QApplication.UnicodeUTF8))
         self.scriptRadio.setText(QtGui.QApplication.translate("checkboxDialog", "Execute script on state change", None, QtGui.QApplication.UnicodeUTF8))
         self.saveButton.setText(QtGui.QApplication.translate("checkboxDialog", "Save", None, QtGui.QApplication.UnicodeUTF8))
         self.closeButton.setText(QtGui.QApplication.translate("checkboxDialog", "Close", None, QtGui.QApplication.UnicodeUTF8))
 
+
+class CUIToolBar(QtGui.QDialog):
+  def __init__(self, parent):
+    super(CUIToolBar, self).__init__(parent)
+    
+    self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowTitleHint | QtCore.Qt.CustomizeWindowHint)
+    self.setWindowTitle("Tools")
+
+    self.setFixedSize(100, 380)
+    self.layout = QtGui.QVBoxLayout(self)
+    self.setLayout(self.layout)
+    self.grp = QtGui.QButtonGroup(self)
+
+    self.load = QtGui.QToolButton(self)
+    self.load.setText("Load")
+    self.layout.addWidget(self.load)
+    self.load.setMinimumSize(80, 25)
+
+    self.save = QtGui.QToolButton(self)
+    self.save.setText("Save")
+    self.layout.addWidget(self.save)
+    self.save.setMinimumSize(80, 25)
+
+    self.background = QtGui.QToolButton(self)
+    self.background.setText("Set BG")
+    self.layout.addWidget(self.background)
+    self.background.setMinimumSize(80, 25)
+
+    self.idle = QtGui.QToolButton(self)
+    self.idle.setCheckable(True)
+    self.idle.setChecked(True)
+    self.idle.setText("Idle")
+    self.layout.addWidget(self.idle)
+    self.idle.setMinimumSize(80, 25)
+
+    self.move_ = QtGui.QToolButton(self)
+    self.move_.setCheckable(True)
+    self.move_.setText("Move")
+    self.layout.addWidget(self.move_)
+    self.move_.setMinimumSize(80, 25)
+
+    self.remove = QtGui.QToolButton(self)
+    self.remove.setCheckable(True)
+    self.remove.setText("Remove")
+    self.layout.addWidget(self.remove)
+    self.remove.setMinimumSize(80, 25)
+
+    self.duplicate = QtGui.QToolButton(self)
+    self.duplicate.setCheckable(True)
+    self.duplicate.setText("Duplicate")
+    self.layout.addWidget(self.duplicate)
+    self.duplicate.setMinimumSize(80, 25)
+    
+    self.mirror = QtGui.QToolButton(self)
+    self.mirror.setCheckable(True)
+    self.mirror.setText("Mirror")
+    self.layout.addWidget(self.mirror)
+    self.mirror.setMinimumSize(80, 25)
+
+    self.setup = QtGui.QToolButton(self)
+    self.setup.setCheckable(True)
+    self.setup.setText("Setup")
+    self.layout.addWidget(self.setup)
+    self.setup.setMinimumSize(80, 25)
+
+    self.selector = QtGui.QToolButton(self)
+    self.selector.setCheckable(True)
+    self.selector.setText("Selector")
+    self.layout.addWidget(self.selector)
+    self.selector.setMinimumSize(80, 25)
+
+    self.checkbox = QtGui.QToolButton(self)
+    self.checkbox.setCheckable(True)
+    self.checkbox.setText("Checkbox")
+    self.layout.addWidget(self.checkbox)
+    self.checkbox.setMinimumSize(80, 25)
+
+    self.slider = QtGui.QToolButton(self)
+    self.slider.setCheckable(True)
+    self.slider.setText("Slider")
+    self.layout.addWidget(self.slider)
+    self.slider.setMinimumSize(80, 25)
+    
+    self.command = QtGui.QToolButton(self)
+    self.command.setCheckable(True)
+    self.command.setText("Command")
+    self.layout.addWidget(self.command)
+    self.command.setMinimumSize(80, 25)
+    
+    self.grp.addButton(self.move_)
+    self.grp.addButton(self.checkbox)
+    self.grp.addButton(self.command)
+    self.grp.addButton(self.setup)
+    self.grp.addButton(self.selector)
+    self.grp.addButton(self.slider)
+    self.grp.addButton(self.duplicate)
+    self.grp.addButton(self.mirror)
+    self.grp.addButton(self.remove)
+    self.grp.addButton(self.idle)
+    self.grp.setExclusive(True)

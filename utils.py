@@ -19,6 +19,12 @@ def undoable_close():
 undoable_b = functools.partial(pm.undoInfo, ock=1)
 undoable_e = functools.partial(pm.undoInfo, cck=1)
 
+def charactersDir():
+  rootDir = pm.workspace(q=1, rd=1)
+  charDir = rootDir+"characters/"
+  pm.workspace.mkdir(charDir)
+  return charDir
+
 def compileFunctions(string, names, symbols):
   exec string in symbols
   return [symbols[name] for name in names]

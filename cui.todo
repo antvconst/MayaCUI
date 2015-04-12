@@ -6,7 +6,7 @@ Character UI Pending tasks
  ✔ Add automatic update of the UI controls when the window is not focused @done (15-04-09 15:07)
  ✔ Add CUI API methods (showByCid, hideByCid, showByTag, hideByTag, selectByTag, updateControls) @done (15-04-09 15:34)
  ☐ Add multiple window support for viewer (with tabs drag-n-drop)
- ☐ Add rectangle selection
+ ✔ Add rectangle selection @done (15-04-12 10:36)
  ✔ Perform refactoring @done (15-04-11 14:04)
  ✔ Add Duplication tool @done (15-04-11 14:04)
  ☐ Add Spinbox control

@@ -25,6 +25,9 @@ class CUILayoutWidget(QWidget):
       "mc": mc,
       "cui": self
     }
+    self.selectionRect = None
+    self.dragging = False
+    self.dragOrigin = None
 
   def paintEvent(self, event):
     opt = QStyleOption()
@@ -98,6 +101,31 @@ class CUILayoutWidget(QWidget):
     for control in self.controls.values():
       if isinstance(control, widgets.Selector) and tag in control.tags:
         pm.select(control.target_objs, add=1)
+
+  def mousePressEvent(self, event):
+    self.selectionRect = QRubberBand(QRubberBand.Rectangle, self)
+    self.dragOrigin = event.pos()
+    self.selectionRect.setGeometry(QRect(self.dragOrigin, QSize()))
+    self.selectionRect.show()
+    
+
+  def mouseMoveEvent(self, event):
+    geo = QRect(self.dragOrigin, event.pos())
+    self.selectionRect.setGeometry(geo)
+    
+  def mouseReleaseEvent(self, event):
+    area = QRect(self.dragOrigin, event.pos())
+    objects = []
+    for control in self.controls.values():
+      if area.contains(control.pos) and isinstance(control, widgets.Selector):
+        objects += control.target_objs
+
+    if QApplication.keyboardModifiers() == Qt.ShiftModifier:
+      pm.select(objects, add=1)
+    else:
+      pm.select(objects)
+    self.selectionRect.deleteLater()
+    event.accept()
 
 class CUIViewer(QDialog):
   def __init__(self):

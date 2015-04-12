@@ -56,7 +56,6 @@ class Selector(BaseControl):
     self.radius = 10
 
     self.widget = QPushButton(p)
-    self.widget.setToolTip("Control ID: {}".format(self.cid))
     self.widget.setText("")
 
     with open(os.path.abspath(os.path.dirname(__file__)) + '\\selector.qss', 'r') as qss_file:
@@ -78,8 +77,8 @@ class Selector(BaseControl):
       if color:
         self.color = color
 
-  def action(self):
-    if QApplication.keyboardModifiers() == Qt.ShiftModifier:
+  def action(self, add=False):
+    if add or QApplication.keyboardModifiers() == Qt.ShiftModifier:
       pm.select(self.target_objs, add=1)
     else:
       pm.select(self.target_objs)
@@ -128,7 +127,8 @@ class Selector(BaseControl):
       self.widget.setToolTip(self.tooltip)
       self.colorCode()
       self.clicked.connect(self.action)
-      
+    else:
+      self.widget.setToolTip("Control ID: {}".format(self.cid))
     self.redraw()
     self.move(self.pos)
 
@@ -194,6 +194,8 @@ class CommandButton(BaseControl):
     if client:
       self.widget.setToolTip(self.tooltip)
       self.clicked.connect(self.action)
+    else:
+      self.widget.setToolTip("Control ID: {}".format(self.cid))
 
   def action(self):
     if self.function is None:
@@ -293,6 +295,8 @@ class Slider(BaseControl):
       self.widget.setToolTip(self.tooltip)
       self.valueChanged.connect(self.valueChangedAction)
       self.released.connect(self.releasedAction)
+    else:
+      self.widget.setToolTip("Control ID: {}".format(self.cid))
 
   def valueChangedAction(self):
     if not self.target_attr:
@@ -314,7 +318,11 @@ class Slider(BaseControl):
 
   def updateControl(self):
     range_ = self.max_attr_val - self.min_attr_val
-    attrVal = pm.getAttr(self.target_attr)
+    try:
+      attrVal = pm.getAttr(self.target_attr)
+    except Exception:
+      return
+
     val = (attrVal - self.min_attr_val)/(range_/100)
     self.widget.blockSignals(True)
     self.widget.setValue(round(val))
@@ -361,6 +369,8 @@ class CheckBox(BaseControl):
       self.widget.setToolTip(self.tooltip)
       self.widget.setChecked(self.default_state)
       self.stateChanged.connect(self.toggledAction)
+    else:
+      self.widget.setToolTip("Control ID: {}".format(self.cid))
 
   def toggledAction(self):
     if self.is_dir_ctrl:
@@ -415,5 +425,8 @@ class CheckBox(BaseControl):
 
   def updateControl(self):
     if self.is_dir_ctrl:
-      attrVal = pm.getAttr(self.target_attr)
+      try:
+        attrVal = pm.getAttr(self.target_attr)
+      except Exception:
+        return
       self.widget.setChecked(attrVal)

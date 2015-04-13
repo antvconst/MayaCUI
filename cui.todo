@@ -5,8 +5,9 @@ Character UI Pending tasks
  ✔ Add maya.commands support for custom scripts @done (15-04-09 14:33)
  ✔ Add automatic update of the UI controls when the window is not focused @done (15-04-09 15:07)
  ✔ Add CUI API methods (showByCid, hideByCid, showByTag, hideByTag, selectByTag, updateControls) @done (15-04-09 15:34)
- ☐ Add multiple window support for viewer (with tabs drag-n-drop)
  ✔ Add rectangle selection @done (15-04-12 10:36)
  ✔ Perform refactoring @done (15-04-11 14:04)
  ✔ Add Duplication tool @done (15-04-11 14:04)
+ ✔ Add selector highlighting @done (15-04-13 17:06)
  ☐ Add Spinbox control
+ ☐ Add multiple window support for viewer (with tabs drag-n-drop)

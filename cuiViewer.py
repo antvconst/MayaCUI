@@ -28,6 +28,7 @@ class CUILayoutWidget(QWidget):
     self.selectionRect = None
     self.dragging = False
     self.dragOrigin = None
+    self.selectionChangedSJ = pm.scriptJob(event=["SelectionChanged", self.updateSelection])
 
   def paintEvent(self, event):
     opt = QStyleOption()
@@ -41,6 +42,7 @@ class CUILayoutWidget(QWidget):
 
   def closeEvent(self, event):
     self.killTimer(self.timer)
+    pm.scriptJob(kill=self.selectionChangedSJ)
     event.accept()
 
   def focusInEvent(self, event):
@@ -48,6 +50,16 @@ class CUILayoutWidget(QWidget):
 
   def focusOutEvent(self, event):
     self.timer = self.startTimer(500)
+
+  def updateSelection(self):
+    selection = set(map(str, pm.ls(sl=1)))
+    for control in self.controls.values():
+      if isinstance(control, widgets.Selector):
+        if set(control.target_objs) <= selection:
+          control.is_selected = True
+        else:
+          control.is_selected = False
+        control.redraw()
 
   def addControl(self, control):
     self.controls[control.cid] = control
@@ -115,15 +127,14 @@ class CUILayoutWidget(QWidget):
     
   def mouseReleaseEvent(self, event):
     area = QRect(self.dragOrigin, event.pos())
-    objects = []
+    control_activated = False
     for control in self.controls.values():
-      if area.contains(control.pos) and isinstance(control, widgets.Selector):
-        objects += control.target_objs
+      if isinstance(control, widgets.Selector) and area.contains(control.pos):
+        control.action(drag=True)
+        control_activated = True
 
-    if QApplication.keyboardModifiers() == Qt.ShiftModifier:
-      pm.select(objects, add=1)
-    else:
-      pm.select(objects)
+    if not control_activated and not QApplication.keyboardModifiers() == Qt.ShiftModifier:
+      pm.select([])
     self.selectionRect.deleteLater()
     event.accept()
 
@@ -156,6 +167,7 @@ class CUIViewer(QDialog):
       tab = self.tabWidget.currentWidget()
       tabId = self.tabWidget.currentIndex()
       self.tabWidget.removeTab(tabId)
+      tab.close()
       tab.deleteLater()
 
   def keyPressEvent(self, event):
@@ -171,6 +183,7 @@ class CUIViewer(QDialog):
     elif event.key() == Qt.Key_R and event.modifiers() == Qt.ControlModifier:
       tab = self.tabWidget.currentIndex()
       self.tabWidget.removeTab(tab)
+      tab.close()
       tab.deleteLater()
 
     elif event.key() == Qt.Key_Q:
@@ -229,3 +242,4 @@ class CUIViewer(QDialog):
         tab.addControl(checkBox)
 
     self.tabWidget.addTab(tab, tab.characterName)
+    tab.updateSelection()

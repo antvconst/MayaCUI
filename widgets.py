@@ -54,6 +54,7 @@ class Selector(BaseControl):
     self.target_objs = []
     self.tooltip = ""
     self.radius = 10
+    self.is_selected = False
 
     self.widget = QPushButton(p)
     self.widget.setText("")
@@ -77,11 +78,18 @@ class Selector(BaseControl):
       if color:
         self.color = color
 
-  def action(self, add=False):
-    if add or QApplication.keyboardModifiers() == Qt.ShiftModifier:
-      pm.select(self.target_objs, add=1)
+  def action(self, drag=False):
+    appendSelection = drag or QApplication.keyboardModifiers() == Qt.ShiftModifier
+    targetSet = set(self.target_objs)
+    selectionSet = set(map(str, pm.ls(sl=1)))
+
+    if targetSet <= selectionSet and appendSelection:
+      pm.select(list(selectionSet - targetSet))
     else:
-      pm.select(self.target_objs)
+      if appendSelection:
+        pm.select(self.target_objs, add=1)
+      else:
+        pm.select(self.target_objs)
 
   def onWidgetTriggered(self):
     self.clicked.emit()
@@ -93,6 +101,7 @@ class Selector(BaseControl):
       "darker": utils.darker(self.color),
       "radius": self.radius,
       "double_radius": self.radius * 2,
+      "border": 1 if self.is_selected else 0
     }
     self.widget.setStyleSheet(self.stylesheet.format(**args))
 

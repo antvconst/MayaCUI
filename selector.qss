@@ -2,7 +2,7 @@ QPushButton {{
 	background-color: qradialgradient(cx:0.5, cy:0.5, radius:1, fx:0.5, fy:0.5, stop:0 {color}, stop:1 #000000);
 	border-style: solid;
 	border-width:{border}px;
-	border-color:#4AABFF;
+	border-color:#8BCEF0;
 	border-radius:{radius}px;
 	max-width:{double_radius}px;
 	max-height:{double_radius}px;
@@ -14,7 +14,7 @@ QPushButton:hover {{
 	background-color: qradialgradient(cx:0.5, cy:0.5, radius:1, fx:0.5, fy:0.5, stop:0 {brighter}, stop:1 #000000);
 	border-style: solid;
 	border-width:{border}px;
-	border-color:#4AABFF;
+	border-color:#8BCEF0;
 	border-radius:{radius}px;
 	max-width:{double_radius}px;
 	max-height:{double_radius}px;
@@ -26,7 +26,7 @@ QPushButton:pressed {{
 	background-color: qradialgradient(cx:0.5, cy:0.5, radius:1, fx:0.5, fy:0.5, stop:0 {darker}, stop:1 #000000);
 	border-style: solid;
 	border-width:{border}px;
-	border-color:#4AABFF;
+	border-color:#8BCEF0;
 	border-radius:{radius}px;
 	max-width:{double_radius}px;
 	max-height:{double_radius}px;

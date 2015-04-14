@@ -95,13 +95,14 @@ class Selector(BaseControl):
     self.clicked.emit()
 
   def redraw(self):
+    radius = self.radius - 1.3 if self.is_selected else self.radius
     args = {
       "color": self.color,
       "brighter": utils.brighter(self.color),
       "darker": utils.darker(self.color),
-      "radius": self.radius,
-      "double_radius": self.radius * 2,
-      "border": 1 if self.is_selected else 0
+      "radius": radius,
+      "double_radius": radius * 2,
+      "border": 2 if self.is_selected else 0
     }
     self.widget.setStyleSheet(self.stylesheet.format(**args))
 

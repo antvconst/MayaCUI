@@ -1,6 +1,7 @@
 import functools
 import math
 import pymel.core as pm
+from PySide.QtCore import QPoint
 
 CHUNK_OPEN = False
 
@@ -18,6 +19,26 @@ def undoable_close():
 
 undoable_b = functools.partial(pm.undoInfo, ock=1)
 undoable_e = functools.partial(pm.undoInfo, cck=1)
+
+def calculateCorners(start, end):
+  offset = end - start
+  if offset.x() >= 0 and offset.y() >= 0:
+    upper_left = start
+    lower_right = end
+
+  elif offset.x() >= 0 and offset.y() <= 0:
+    upper_left = QPoint(start.x(), end.y())
+    lower_right = QPoint(end.x(), start.y())
+
+  elif offset.x() <= 0 and offset.y() >= 0:
+    upper_left = QPoint(end.x(), start.y())
+    lower_right = QPoint(start.x(), end.y())
+
+  elif offset.x() <= 0 and offset.y() <= 0:
+    upper_left = end
+    lower_right = start
+
+  return (upper_left, lower_right)
 
 def charactersDir():
   rootDir = pm.workspace(q=1, rd=1)

@@ -122,11 +122,12 @@ class CUILayoutWidget(QWidget):
     
 
   def mouseMoveEvent(self, event):
-    geo = QRect(self.dragOrigin, event.pos())
+    geo = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
     self.selectionRect.setGeometry(geo)
     
   def mouseReleaseEvent(self, event):
-    area = QRect(self.dragOrigin, event.pos())
+    area = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
+
     control_activated = False
     for control in self.controls.values():
       if isinstance(control, widgets.Selector) and area.contains(control.pos):

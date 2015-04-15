@@ -122,22 +122,25 @@ class CUILayoutWidget(QWidget):
     
 
   def mouseMoveEvent(self, event):
-    geo = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
-    self.selectionRect.setGeometry(geo)
-    
+    if self.selectionRect:
+      geo = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
+      self.selectionRect.setGeometry(geo)
+
   def mouseReleaseEvent(self, event):
-    area = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
+    if self.selectionRect:
+      area = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
 
-    control_activated = False
-    for control in self.controls.values():
-      if isinstance(control, widgets.Selector) and area.contains(control.pos):
-        control.action(drag=True)
-        control_activated = True
+      control_activated = False
+      for control in self.controls.values():
+        if isinstance(control, widgets.Selector) and area.contains(control.pos):
+          control.action(drag=True)
+          control_activated = True
 
-    if not control_activated and not QApplication.keyboardModifiers() == Qt.ShiftModifier:
-      pm.select([])
-    self.selectionRect.deleteLater()
-    event.accept()
+      if not control_activated and not QApplication.keyboardModifiers() == Qt.ShiftModifier:
+        pm.select([])
+      self.selectionRect.deleteLater()
+      self.selectionRect = None
+      event.accept()
 
 class CUIViewer(QDialog):
   def __init__(self):

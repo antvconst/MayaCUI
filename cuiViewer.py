@@ -61,6 +61,21 @@ class CUILayoutWidget(QWidget):
           control.is_selected = False
         control.redraw()
 
+  def activeSelectors(self):
+    active_selectors = []
+    for control in self.controls.values():
+      if isinstance(control, widgets.Selector) and control.is_selected:
+        active_selectors.append(control)
+    return active_selectors
+
+  def activateSelectorsAsGroup(self, selectors):
+    if not QApplication.keyboardModifiers() == Qt.ShiftModifier:
+      for selector in self.activeSelectors():
+        selector.action(drag=True)
+
+    for selector in selectors:
+      selector.action(drag=1)
+
   def addControl(self, control):
     self.controls[control.cid] = control
 
@@ -130,14 +145,15 @@ class CUILayoutWidget(QWidget):
     if self.selectionRect:
       area = QRect(*utils.calculateCorners(self.dragOrigin, event.pos()))
 
-      control_activated = False
+      controls_in_area = []
       for control in self.controls.values():
         if isinstance(control, widgets.Selector) and area.contains(control.pos):
-          control.action(drag=True)
-          control_activated = True
+          controls_in_area.append(control)
 
-      if not control_activated and not QApplication.keyboardModifiers() == Qt.ShiftModifier:
+      if not controls_in_area and not QApplication.keyboardModifiers() == Qt.ShiftModifier:
         pm.select([])
+      else:
+        self.activateSelectorsAsGroup(controls_in_area)
       self.selectionRect.deleteLater()
       self.selectionRect = None
       event.accept()

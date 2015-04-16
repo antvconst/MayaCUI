@@ -1,22 +1,22 @@
 import cuiViewer
 import cuiBuilder
 
-BUILDER_INSTANCE = None
-VIEWER_INSTANCE = None
+BUILDER_INSTANCE = None # global builder instance
+VIEWER_INSTANCE = None # global viewer instance
 
-def builder():
+def builder(): # show the builder
   global BUILDER_INSTANCE
   reload(cuiBuilder)
   BUILDER_INSTANCE = cuiBuilder.CUIBuilder()
   BUILDER_INSTANCE.show()
 
-def viewer():
+def viewer(): # show the viewer
   global VIEWER_INSTANCE
   reload(cuiViewer)
   VIEWER_INSTANCE = cuiViewer.CUIViewer()
   VIEWER_INSTANCE.show()
 
-def killCUI():
+def killCUI(): # kill everything
   global BUILDER_INSTANCE, VIEWER_INSTANCE
 
   if BUILDER_INSTANCE:
@@ -28,9 +28,3 @@ def killCUI():
     VIEWER_INSTANCE.close()
     VIEWER_INSTANCE.deleteLater()
     VIEWER_INSTANCE = None
-
-def update():
-  killCUI()
-  import update
-  update.updateFromGitHub()
-  

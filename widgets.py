@@ -32,6 +32,7 @@ class BaseControl(QObject):
   def hide(self):
     self.widget.hide()
 
+  # safely delete the control
   def clean_up(self):
     self.widget.hide()
     self.widget.deleteLater()
@@ -46,9 +47,10 @@ class Selector(BaseControl):
 
   def __init__(self, p, **kwargs):
     super(Selector, self).__init__()
-    self.cid = kwargs.get("cid", -1)
-    self.pos = kwargs.get("pos", QPoint(0, 0))
-    self.color = "#FFFFFF"
+    # define default parameters
+    self.cid = kwargs.get("cid", -1) # if no cid specified set the default
+    self.pos = kwargs.get("pos", QPoint(0, 0)) # if no position specified set the default
+    self.color = "#FFFFFF" # default color: full white
     self.override_color = False
     self.tags = []
     self.target_objs = []
@@ -56,56 +58,64 @@ class Selector(BaseControl):
     self.radius = 10
     self.is_selected = False
 
-    self.widget = QPushButton(p)
-    self.widget.setText("")
+    self.widget = QPushButton(p) # underlying Qt widget
+    self.widget.setText("") # clear the label
 
+    # load the stylesheet for the selector
     with open(os.path.abspath(os.path.dirname(__file__)) + '\\selector.qss', 'r') as qss_file:
       self.stylesheet = qss_file.read()
 
-    self.setup()
-    self.widget.show()
+    self.setup() # apply settings
+    self.widget.show() 
     
     self.widget.clicked.connect(self.onWidgetTriggered)
 
   def colorCode(self):
     if self.override_color:
       try:
-        top_obj = pm.PyNode(self.target_objs[0])
-      except:
+        top_obj = pm.PyNode(self.target_objs[0]) # get the first of the target objects
+      except: # if target object does not exist display the warning
         pm.warning("Object {} not found. Make sure the correct scene is loaded.".format(self.target_objs[0]))
         return
-      color = utils.getOverrideColor(top_obj)
+      color = utils.getOverrideColor(top_obj) # set the override color (see utils.py)
       if color:
         self.color = color
 
+  '''
+  Implements the main functionality of the selector - selecting assigned objects
+  '''
   def action(self, drag=False):
-    appendSelection = drag or QApplication.keyboardModifiers() == Qt.ShiftModifier
-    targetSet = set(self.target_objs)
-    selectionSet = set(map(str, pm.ls(sl=1)))
+    appendSelection = drag or QApplication.keyboardModifiers() == Qt.ShiftModifier # selecting by dragging or shift selecting
+    targetSet = set(self.target_objs) # convert to python set for convenience
+    selectionSet = set(map(str, pm.ls(sl=1))) # get the object names for selected nodes and convert to set for convenience
 
-    if targetSet <= selectionSet and appendSelection:
-      pm.select(list(selectionSet - targetSet))
+    # if target objects are selected and appending is on
+    if targetSet <= selectionSet and appendSelection: 
+      pm.select(list(selectionSet - targetSet)) # remove target objects from selection leaving everything else selected
     else:
-      if appendSelection:
+      if appendSelection: # add target objects to selection
         pm.select(self.target_objs, add=1)
       else:
-        pm.select(self.target_objs)
+        pm.select(self.target_objs) # replace current selection with target objects
 
   def onWidgetTriggered(self):
     self.clicked.emit()
 
   def redraw(self):
-    radius = self.radius - 1.3 if self.is_selected else self.radius
+    radius = self.radius - 1.3 if self.is_selected else self.radius # taking the border into account
     args = {
       "color": self.color,
       "brighter": utils.brighter(self.color),
       "darker": utils.darker(self.color),
       "radius": radius,
       "double_radius": radius * 2,
-      "border": 2 if self.is_selected else 0
+      "border": 2 if self.is_selected else 0 # show 2 pixel border if the selector is activated
     }
-    self.widget.setStyleSheet(self.stylesheet.format(**args))
+    self.widget.setStyleSheet(self.stylesheet.format(**args)) # redraw the widget
 
+  '''
+  Returns JSON representation of the control
+  '''
   def serialize(self):
     return {
     "selector" : {
@@ -120,6 +130,10 @@ class Selector(BaseControl):
         "radius": self.radius
       }
     }
+
+  '''
+  Loads the control from JSON representation
+  '''
   def deserialize(self, json, duplicate=False):
     if not duplicate:
       self.cid = json["cid"]
@@ -132,15 +146,18 @@ class Selector(BaseControl):
     self.tooltip = json["tooltip"]
     self.radius = json.get("radius", 10)
 
+  '''
+  Apply the settings to control
+  '''
   def setup(self, client=False):
-    if client:
+    if client: # if loaded by CUI Viewer
       self.widget.setToolTip(self.tooltip)
       self.colorCode()
       self.clicked.connect(self.action)
     else:
-      self.widget.setToolTip("Control ID: {}".format(self.cid))
-    self.redraw()
-    self.move(self.pos)
+      self.widget.setToolTip("Control ID: {}".format(self.cid)) # show cid in tooltip
+    self.redraw() # redraw
+    self.move(self.pos) # move into place
 
 
 class CommandButton(BaseControl):
@@ -148,8 +165,9 @@ class CommandButton(BaseControl):
 
   def __init__(self, p, **kwargs):
     super(CommandButton, self).__init__()
-    self.cid = kwargs.get("cid", -1)
-    self.pos = kwargs.get("pos", QPoint(0, 0))
+    # define default parameters
+    self.cid = kwargs.get("cid", -1) # if no cid specified set the default
+    self.pos = kwargs.get("pos", QPoint(0, 0)) # if no position specified set the default
     self.label = "Command"
     self.cmd = DEFAULT_COMMAND_BUTTON_CODE
     self.tooltip = ""
@@ -161,7 +179,6 @@ class CommandButton(BaseControl):
     
     self.widget = QPushButton(p)
     self.setup()
-    self.widget.setToolTip("Control ID: {}".format(self.cid))
     self.widget.show()
     
     self.widget.clicked.connect(self.onWidgetTriggered)
@@ -169,6 +186,9 @@ class CommandButton(BaseControl):
   def onWidgetTriggered(self):
     self.clicked.emit()
 
+  '''
+  Returns JSON representation of the control
+  '''
   def serialize(self):
     return {
     "command_button": {
@@ -184,6 +204,9 @@ class CommandButton(BaseControl):
       }
     }
 
+  '''
+  Loads the control from JSON representation
+  '''
   def deserialize(self, json, duplicate=False):
     if not duplicate:
       self.cid = json["cid"]
@@ -196,26 +219,29 @@ class CommandButton(BaseControl):
     self.width = json["width"]
     self.tooltip = json["tooltip"]
 
+  '''
+  Apply the settings to control
+  '''
   def setup(self, client=False):
-    self.widget.resize(self.width, self.height)
-    self.widget.setText(self.label)
-    self.move(self.pos)
+    self.widget.resize(self.width, self.height) # set size
+    self.widget.setText(self.label) # set label
+    self.move(self.pos) # move into place
 
-    if client:
+    if client: # if loaded by CUI Viewer
       self.widget.setToolTip(self.tooltip)
       self.clicked.connect(self.action)
     else:
-      self.widget.setToolTip("Control ID: {}".format(self.cid))
+      self.widget.setToolTip("Control ID: {}".format(self.cid)) # set cid as tooltip
 
   def action(self):
-    if self.function is None:
+    if self.function is None: # if activating first time we need to compile the assigned code
       try:
         self.function = utils.compileFunctions(self.cmd, ["clicked"], self.parent.symbols)[0]
-      except Exception:
+      except Exception: # if something went wrong display the warning
         pm.warning("Could not compile commands for this control. Please, check the code")
         return
 
-    self.function()
+    self.function() # run the assigned code
 
 
 class Slider(BaseControl):
@@ -224,8 +250,9 @@ class Slider(BaseControl):
 
   def __init__(self, p, **kwargs):
     super(Slider, self).__init__()
-    self.cid = kwargs.get("cid", -1)
-    self.pos = kwargs.get("pos", QPoint(0, 0))
+    # setting up default settings
+    self.cid = kwargs.get("cid", -1) # if no cid specified 
+    self.pos = kwargs.get("pos", QPoint(0, 0)) # if no pos specified
     self.target_attr = ""
     self.min_attr_val = 0.0
     self.max_attr_val = 0.0
@@ -237,10 +264,9 @@ class Slider(BaseControl):
     self.width = 15
     self.length = 80
 
-    self.widget = QSlider(p)
-    self.widget.setMaximum(100)
-    self.widget.setToolTip("Control ID: {}".format(self.cid))
-    self.setup()
+    self.widget = QSlider(p) # init the underlying Qt widget
+    self.widget.setMaximum(100) # otherwise maximum value would be 99, which is not very nice 
+    self.setup() # apply the settings
     self.widget.show()
     
     self.widget.valueChanged.connect(self.onValueChanged)
@@ -255,6 +281,9 @@ class Slider(BaseControl):
   def value(self):
     return self.widget.value()
 
+  '''
+  Sets the orientation and dimensions according to setting
+  '''
   def updateGeometry(self):
     orient = Qt.Vertical if self.is_vertical else Qt.Horizontal
     self.widget.setOrientation(orient)
@@ -263,6 +292,9 @@ class Slider(BaseControl):
     else:
       self.widget.resize(self.length, self.width)     
 
+  '''
+  Returns JSON representation of the control
+  '''
   def serialize(self):
     return {
       "slider": {
@@ -281,6 +313,9 @@ class Slider(BaseControl):
         }
     }
 
+  '''
+  Loads the control from JSON representation
+  '''
   def deserialize(self, json, duplicate=False):
     if not duplicate:
       self.cid = json["cid"]
@@ -296,47 +331,56 @@ class Slider(BaseControl):
     self.tooltip = json["tooltip"]
     self.length = json.get("length", 80)
 
+  '''
+  Apply current settings
+  '''
   def setup(self, client=False):
-    self.updateGeometry()
-    self.move(self.pos)
+    self.updateGeometry() # reorient
+    self.move(self.pos) # move into place
 
-    if client:
+    if client: # if loaded by CUI Viewer
       self.widget.setValue(self.default_val)
       self.widget.setToolTip(self.tooltip)
       self.valueChanged.connect(self.valueChangedAction)
       self.released.connect(self.releasedAction)
     else:
-      self.widget.setToolTip("Control ID: {}".format(self.cid))
+      self.widget.setToolTip("Control ID: {}".format(self.cid)) # set cid as tooltip
 
+  '''
+  Process the slider move event by updating the assigned attribute
+  '''
   def valueChangedAction(self):
-    if not self.target_attr:
+    if not self.target_attr: # if nothing assigned
       pm.warning("No attribute assigned to this slider")
       return
 
-    range_ = self.max_attr_val - self.min_attr_val
-    step = range_/100
-    val = self.min_attr_val + self.value() * step
+    range_ = self.max_attr_val - self.min_attr_val # offset between max and min
+    step = range_/100 # a value per percent
+    val = self.min_attr_val + self.value() * step # min + percent value * step
 
     if self.clamp_to_int:
-      val = round(val)
+      val = round(val) # round to nearest integer
     
-    utils.undoable_open()
-    pm.setAttr(self.target_attr, val)
+    utils.undoable_open() # open Maya undo chunk
+    pm.setAttr(self.target_attr, val) # update the attribute
 
   def releasedAction(self):
-    utils.undoable_close()
+    utils.undoable_close() # when slider is released - free the undo chunk
 
+  '''
+  Update the control to match current attribute value
+  '''
   def updateControl(self):
-    range_ = self.max_attr_val - self.min_attr_val
+    range_ = self.max_attr_val - self.min_attr_val # offset between max and min
     try:
-      attrVal = pm.getAttr(self.target_attr)
-    except Exception:
+      attrVal = pm.getAttr(self.target_attr) # get the current value
+    except Exception: # if attribute is not accessible or does not exist
       return
 
-    val = (attrVal - self.min_attr_val)/(range_/100)
-    self.widget.blockSignals(True)
-    self.widget.setValue(round(val))
-    self.widget.blockSignals(False)
+    val = (attrVal - self.min_attr_val)/(range_/100) # calculate the percent value for slider
+    self.widget.blockSignals(True) # block signals to avoid the unwanted attribute update
+    self.widget.setValue(round(val)) # set slider value rounding it to nearest integer
+    self.widget.blockSignals(False) # unblock the signals
 
 
 class CheckBox(BaseControl):
@@ -344,8 +388,9 @@ class CheckBox(BaseControl):
 
   def __init__(self, p, **kwargs):
     super(CheckBox, self).__init__()
-    self.cid = kwargs.get("cid", -1)
-    self.pos = kwargs.get("pos", QPoint(0, 0))
+    # set up the default settings
+    self.cid = kwargs.get("cid", -1) # if no cid specified
+    self.pos = kwargs.get("pos", QPoint(0, 0)) # if no pos specified
     self.cmd = DEFAULT_CHECKBOX_CODE
     self.is_dir_ctrl = True
     self.target_attr = ""
@@ -357,9 +402,8 @@ class CheckBox(BaseControl):
     self.off_cmd = None
     self.parent = p
     
-    self.widget = QCheckBox(self.label, p)
-    self.widget.setToolTip("Control ID: {}".format(self.cid))
-    self.setup()
+    self.widget = QCheckBox(self.label, p) # init the underlying Qt widget
+    self.setup() # apply the settings
     self.widget.show()
     
     self.widget.stateChanged.connect(self.onStateChanged)
@@ -371,39 +415,46 @@ class CheckBox(BaseControl):
     self.stateChanged.emit()
 
   def setup(self, client=False):
-    self.widget.setText(self.label)
+    self.widget.setText(self.label) # set the label
+    # resize the widget for label to fit in nicely (8px/letter, 20px for checkbox)
     self.widget.resize(len(self.label)*8+20, self.widget.height())
-    self.widget.move(self.pos)
+    self.widget.move(self.pos) # move into place
     
-    if client:
+    if client: # if loaded by CUI Viewer
       self.widget.setToolTip(self.tooltip)
       self.widget.setChecked(self.default_state)
       self.stateChanged.connect(self.toggledAction)
     else:
-      self.widget.setToolTip("Control ID: {}".format(self.cid))
+      self.widget.setToolTip("Control ID: {}".format(self.cid)) # set cid as tooltip
 
+  '''
+  Process the checked/unchecked state update
+  '''
   def toggledAction(self):
-    if self.is_dir_ctrl:
-      if not self.target_attr:
+    if self.is_dir_ctrl: # if controling an attribute directly
+      if not self.target_attr: # if no attribute assigned
         pm.warning("No attribute assigned to this checkbox")
         return
-      pm.setAttr(self.target_attr, self.isChecked())
+      pm.setAttr(self.target_attr, self.isChecked()) # set the boolean value for the attribute
 
-    else:
-      if not (self.on_cmd and self.off_cmd):
+    else: # is a command checkbox
+      if not (self.on_cmd and self.off_cmd): # if commands not compiled
         try:
           funcs = utils.compileFunctions(self.cmd, ["on", "off"], self.parent.symbols)
-          self.on_cmd = funcs[0]
-          self.off_cmd = funcs[1]
-        except Exception:
+          self.on_cmd = funcs[0] # get the on() function
+          self.off_cmd = funcs[1] # get the off() function
+        except Exception: # error occured while compiling
           pm.warning("Could not compile commands for this control. Please, check the code")
           return
 
       if self.isChecked():
-        self.on_cmd()
+        self.on_cmd() # checked => run on()
       else:
-        self.off_cmd()
+        self.off_cmd() # unchecked => run off()
 
+  '''
+  Returns the JSON representation of the control
+  '''
   def serialize(self):
     return {
       "checkbox": {
@@ -420,6 +471,9 @@ class CheckBox(BaseControl):
       }
     }
 
+  '''
+  Loads the control from JSON representation
+  '''
   def deserialize(self, json, duplicate=False):
     if not duplicate:
       self.cid = json["cid"]
@@ -433,10 +487,13 @@ class CheckBox(BaseControl):
     self.tags = json["tags"]
     self.tooltip = json["tooltip"]
 
+  '''
+  Update the state from Maya attribute
+  '''
   def updateControl(self):
-    if self.is_dir_ctrl:
+    if self.is_dir_ctrl: # if controling an attribute directly
       try:
-        attrVal = pm.getAttr(self.target_attr)
-      except Exception:
+        attrVal = pm.getAttr(self.target_attr) # get the attribute value
+      except Exception: # could not reach the assigned attribute
         return
-      self.widget.setChecked(attrVal)
+      self.widget.setChecked(attrVal) # set the state according to received value

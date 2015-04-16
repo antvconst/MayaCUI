@@ -7,22 +7,29 @@ from PySide.QtCore import Qt
 
 import pymel.core as pm
 
+'''
+Returns the user's choice of one of the attributes of the first selected object
+'''
 def queryAttributeChoice(parentDialog):
-  objName = str(pm.ls(sl=1)[0])
+  objName = str(pm.ls(sl=1)[0]) # getting the first selected object
 
   if QApplication.keyboardModifiers() == Qt.ControlModifier:
-    attrs = pm.listAttr(objName, w=1)
+    attrs = pm.listAttr(objName, w=1) # Ctrl pressed => showing all writeable channels
   elif QApplication.keyboardModifiers() == Qt.AltModifier:
-    attrs = pm.listAttr(objName, ud=1)
+    attrs = pm.listAttr(objName, ud=1) # Alt pressed => showing only user defined channels
   else:
-    attrs = pm.listAttr(objName, k=1)
+    attrs = pm.listAttr(objName, k=1) # otherwise showing only keyable channels
 
   choice = QInputDialog.getItem(parentDialog, "Attributes", "Choose an attribute to be driven", attrs)
   if choice[1]:
-    return "{obj}.{attr}".format(obj=objName, attr=choice[0])
-  else:
+    return "{obj}.{attr}".format(obj=objName, attr=choice[0]) # formatting the full attribute name
+  else: # if no choice has been made (window closed etc)
     return None
 
+'''
+The following class definitions implement simple logic behind the control setup dialogs
+Everything should be straight-forward, no need in further comments
+'''
 class CommandButtonDialog(QDialog, Ui_commandButtonDialog):
   def __init__(self, parent, widget):
     super(CommandButtonDialog, self).__init__(parent)

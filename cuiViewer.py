@@ -48,7 +48,6 @@ class CUILayoutWidget(QWidget):
   '''
   def timerEvent(self, event):
     if not self.hasFocus(): # if not focused
-      print "LOL"
       self.updateControls() # update the controls
 
   '''

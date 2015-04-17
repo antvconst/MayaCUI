@@ -210,7 +210,7 @@ class CUILayoutWidget(QWidget):
 Implements the main window of CUI Viewer
 '''
 class CUIViewer(QDialog):
-  def __init__(self):
+  def __init__(self, tab=None):
     super(CUIViewer, self).__init__(maya_main_window())
     self.setWindowFlags(Qt.Window)
     self.setAttribute(Qt.WA_DeleteOnClose)
@@ -225,7 +225,10 @@ class CUIViewer(QDialog):
 
     self.tabWidget.currentChanged.connect(self.matchTabSize)
 
-    self.loadUi() # init the new tab
+    if tab:
+      self.tabWidget.addTab(tab, tab.characterName)
+    else:
+      self.loadUi() # init the new tab
 
   '''
   Resize the window according to the tab size
@@ -269,6 +272,14 @@ class CUIViewer(QDialog):
       self.tabWidget.removeTab(tab)
       tab.close()
       tab.deleteLater()
+
+    elif event.key() == Qt.Key_Space and event.modifiers() == Qt.ControlModifier:
+      # Ctrl+Space => tear off current tab
+      tab = self.tabWidget.currentWidget()
+      tab_id = self.tabWidget.currentIndex()
+      self.tabWidget.removeTab(tab_id)
+      from . import viewer
+      viewer(tab)
 
     elif event.key() == Qt.Key_Q:
       # Q => switch Maya tool to Selection Tool

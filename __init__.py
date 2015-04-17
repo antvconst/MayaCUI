@@ -2,7 +2,7 @@ import cuiViewer
 import cuiBuilder
 
 BUILDER_INSTANCE = None # global builder instance
-VIEWER_INSTANCE = None # global viewer instance
+VIEWER_INSTANCES = [] # collection of global viewer instances
 
 def builder(): # show the builder
   global BUILDER_INSTANCE
@@ -10,21 +10,21 @@ def builder(): # show the builder
   BUILDER_INSTANCE = cuiBuilder.CUIBuilder()
   BUILDER_INSTANCE.show()
 
-def viewer(): # show the viewer
-  global VIEWER_INSTANCE
+def viewer(tab=None): # show the viewer
+  global VIEWER_INSTANCES
   reload(cuiViewer)
-  VIEWER_INSTANCE = cuiViewer.CUIViewer()
-  VIEWER_INSTANCE.show()
+  new_instance = cuiViewer.CUIViewer(tab)
+  VIEWER_INSTANCES.append(new_instance)
+  new_instance.show()
 
-def killCUI(): # kill everything
-  global BUILDER_INSTANCE, VIEWER_INSTANCE
+def kill(): # kill everything
+  global BUILDER_INSTANCE, VIEWER_INSTANCES
 
   if BUILDER_INSTANCE:
     BUILDER_INSTANCE.close()
     BUILDER_INSTANCE.deleteLater()
     BUILDER_INSTANCE = None
 
-  if VIEWER_INSTANCE:
-    VIEWER_INSTANCE.close()
-    VIEWER_INSTANCE.deleteLater()
-    VIEWER_INSTANCE = None
+  if VIEWER_INSTANCES:
+    for instance in VIEWER_INSTANCES:
+      instance.deleteLater()

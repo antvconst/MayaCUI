@@ -414,6 +414,9 @@ class CheckBox(BaseControl):
   def onStateChanged(self):
     self.stateChanged.emit()
 
+  '''
+  Apply current settings
+  '''
   def setup(self, client=False):
     self.widget.setText(self.label) # set the label
     # resize the widget for label to fit in nicely (8px/letter, 20px for checkbox)
@@ -497,3 +500,97 @@ class CheckBox(BaseControl):
       except Exception: # could not reach the assigned attribute
         return
       self.widget.setChecked(attrVal) # set the state according to received value
+
+
+'''
+Have to subclass, because QLineEdit does not 
+have any signals to be used as trigger notification
+'''
+class CUILineEdit(QDoubleSpinBox):
+  focused = Signal()
+
+  def __init__(self, p):
+    super(CUILineEdit, self).__init__(p)
+    self.setButtonSymbols(QSpinBox.NoButtons)
+    self.setFocusPolicy(Qt.ClickFocus)
+    self.setMinimum(-10000)
+    self.setMaximum(10000)
+    self.setSingleStep(0.1)
+
+  def focusInEvent(self, event):
+    if event.reason() == Qt.MouseFocusReason:
+      self.focused.emit()
+    else:
+      event.ignore()
+
+
+class FloatField(BaseControl):
+  focused = Signal()
+
+  def __init__(self, p, **kwargs):
+    super(FloatField, self).__init__()
+    # set up the default settings
+    self.cid = kwargs.get("cid", -1) # if no cid specified
+    self.pos = kwargs.get("pos", QPoint(0, 0)) # if no pos specified
+    self.w = 75
+    self.h = 20
+    self.target_attr = ""
+    self.tags = []
+    self.tooltip = ""
+    self.parent = p
+
+
+    self.widget = CUILineEdit(p) # create the underlying Qt widget
+    self.setup() # apply the settings
+    self.show()
+    self.widget.focused.connect(self.onFocused)
+
+  def onFocused(self):
+    self.focused.emit()
+
+  def serialize(self):
+    return {
+      "float_field": {
+        "cid": self.cid,
+        "target_attr": self.target_attr,
+        "pos_x": self.pos.x(),
+        "pos_y": self.pos.y(),
+        "w": self.w,
+        "h": self.h,
+        "tags": self.tags,
+        "tooltip": self.tooltip
+      }
+    }
+
+  def deserialize(self, json, duplicate=False):
+    if not duplicate:
+      self.cid = json["cid"]
+      self.pos = QPoint(json["pos_x"], json["pos_y"])
+
+    self.w = json["w"]
+    self.h = json["h"]
+    self.target_attr = json["target_attr"]
+    self.tags = json["tags"]
+    self.tooltip = json["tooltip"]
+
+  def setup(self, client=False):
+    self.widget.resize(self.w, self.h) # resize according to settings
+    self.move(self.pos) # move into place
+    if client: # if loaded by CUI Viewer
+      self.widget.setToolTip(self.tooltip) # display the tooltip
+      self.widget.valueChanged.connect(self.valueChangedAction)
+    else:
+      self.widget.setToolTip("Control ID: {}".format(self.cid)) # set cid as tooltip
+
+  def valueChangedAction(self):
+    val = self.widget.value() # convert value to float
+    pm.setAttr(self.target_attr, val) # set new value to attribute
+
+  def updateControl(self):
+    try:
+      val = pm.getAttr(self.target_attr) # get the attribute value
+    except Exception: # abort if attribute unreachable
+      return
+
+    self.widget.setValue(val) # display new value
+

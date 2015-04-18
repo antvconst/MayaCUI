@@ -3,16 +3,25 @@ import cuiBuilder
 
 BUILDER_INSTANCE = None # global builder instance
 VIEWER_INSTANCES = [] # collection of global viewer instances
+DEBUG = False
 
-def builder(): # show the builder
-  global BUILDER_INSTANCE
-  reload(cuiBuilder)
+def builder(dbg=False): # show the builder
+  global BUILDER_INSTANCE, DEBUG
+
+  if dbg:
+    DEBUG = True
+    reload(cuiBuilder)
+
   BUILDER_INSTANCE = cuiBuilder.CUIBuilder()
   BUILDER_INSTANCE.show()
 
-def viewer(tab=None): # show the viewer
-  global VIEWER_INSTANCES
-  reload(cuiViewer)
+def viewer(tab=None, dbg=False): # show the viewer
+  global VIEWER_INSTANCES, DEBUG
+  
+  if dbg:
+    DEBUG = True
+    reload(cuiViewer)
+  
   new_instance = cuiViewer.CUIViewer(tab)
   VIEWER_INSTANCES.append(new_instance)
   new_instance.show()

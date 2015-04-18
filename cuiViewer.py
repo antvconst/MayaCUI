@@ -1,15 +1,21 @@
-import widgets
-#reload(widgets)
+from . import DEBUG
 
-from ui import maya_main_window
+import widgets
+import utils
+import ui
+
+if DEBUG:
+  reload(widgets)
+  reload(utils)
+  reload(ui)
+
+from ui import maya_main_window 
 from PySide.QtGui import *
 from PySide.QtCore import *
 from maya import mel
-
 import pymel.core as pm
 import maya.cmds as mc
 import json
-import utils
 
 '''
 Implements a CUI Viewer tab
@@ -47,7 +53,7 @@ class CUILayoutWidget(QWidget):
   Called when the timer expires, updates the controls states
   '''
   def timerEvent(self, event):
-    if not self.hasFocus(): # if not focused
+    if not (self.hasFocus() or self.childHasFocus()): # if not focused
       self.updateControls() # update the controls
 
   '''
@@ -57,6 +63,16 @@ class CUILayoutWidget(QWidget):
     self.killTimer(self.timer) # kill the update timer
     pm.scriptJob(kill=self.selectionChangedSJ) # kill the script job
     event.accept() # go ahead with the event
+
+  '''
+  Returns True if some of the controls has focus
+  Otherwise returns False
+  '''
+  def childHasFocus(self):
+    for control in self.controls.values():
+      if control.widget.hasFocus():
+        return True
+    return False
 
   '''
   Called when the Maya selection is updated
@@ -347,6 +363,12 @@ class CUIViewer(QDialog):
         checkBox.deserialize(control)
         checkBox.setup(client=True)
         tab.addControl(checkBox)
+
+      elif controlType == "float_field":
+        floatField = widgets.FloatField(tab)
+        floatField.deserialize(control)
+        floatField.setup(client=True)
+        tab.addControl(floatField)
 
     self.tabWidget.addTab(tab, tab.characterName) # add the tab
     tab.updateSelection() # set up the selectors states

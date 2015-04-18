@@ -1,5 +1,4 @@
 import ui
-reload(ui)
 from ui import Ui_commandButtonDialog, Ui_selectorDialog, Ui_sliderDialog, Ui_checkboxDialog
 
 from PySide.QtGui import QDialog, QApplication, QInputDialog
@@ -193,3 +192,36 @@ class CheckBoxDialog(QDialog, Ui_checkboxDialog):
     attribute = queryAttributeChoice(self)
     if attribute:
       self.attributeEdit.setText(attribute)
+
+
+class FloatFieldDialog(QDialog, ui.Ui_floatFieldDialog):
+  def __init__(self, parent, widget):
+    super(FloatFieldDialog, self).__init__(parent)
+    self.setupUi(self)
+
+    self.widget = widget
+    self.tagsEdit.setText("".join(widget.tags))
+    self.attributeEdit.setText(widget.target_attr)
+    self.tooltipEdit.setText(widget.tooltip)
+    self.widthSpin.setValue(widget.w)
+    self.heightSpin.setValue(widget.h)
+
+    self.loadButton.clicked.connect(self.loadObj)
+    self.saveButton.clicked.connect(self.save)
+    self.closeButton.clicked.connect(self.close)
+
+    self.show()
+
+  def loadObj(self):
+    attribute = queryAttributeChoice(self)
+    if attribute:
+      self.attributeEdit.setText(attribute)
+
+  def save(self):
+    self.widget.tags = self.tagsEdit.text().split()
+    self.widget.target_attr = self.attributeEdit.text()
+    self.widget.tooltip = self.tooltipEdit.text()
+    self.widget.h = self.heightSpin.value()
+    self.widget.w = self.widthSpin.value()
+    self.widget.setup()
+    self.close()

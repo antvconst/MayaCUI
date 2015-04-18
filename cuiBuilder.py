@@ -1,18 +1,22 @@
+from . import DEBUG
+
 import ui
-reload(ui)
-
 import widgets
-reload(widgets)
-
 import setupDialogs 
-reload(setupDialogs)
-from setupDialogs import *
+import utils
 
+if DEBUG:
+  reload(ui)
+  reload(widgets)
+  reload(setupDialogs)
+  reload(utils)
+
+from setupDialogs import *
 from PySide.QtCore import *
 from PySide.QtGui import *
 import json
 import shutil
-import utils
+
 
 class State: # enum for widget placing states
   idle = 0
@@ -28,7 +32,6 @@ class CUIBuilder(QDialog):
     self.setWindowTitle("Character UI Builder")
     self.setWindowFlags(Qt.Window)
     self.setAttribute(Qt.WA_DeleteOnClose)
-    self.resize(512, 512)
 
     self.modified = False
     self.controls = {}
@@ -38,6 +41,7 @@ class CUIBuilder(QDialog):
     self.characterName = None
     self.background = None
 
+    self.reset()
     self.toolbar = ui.CUIToolBar(self)
 
     self.toolbar.save.clicked.connect(self.save)
@@ -51,6 +55,8 @@ class CUIBuilder(QDialog):
   Process mouse down event
   '''
   def mousePressEvent(self, event):
+    self.setFocus()
+
     # get the position of click
     position = self.mapFromGlobal(event.globalPos()-QPoint(10,10))
 
@@ -74,6 +80,9 @@ class CUIBuilder(QDialog):
 
     elif self.toolbar.checkbox.isChecked(): # if checkbox tool is active
       self.newCheckbox(position) # create a new checkbox
+
+    elif self.toolbar.floatField.isChecked(): # if float field tool is active
+      self.newFloatField(position) # create a new float field
 
     elif self.toolbar.duplicate.isChecked(): # if duplicate tool is acive
       self.duplicateControl(self.focusedControl, position) # duplicate the focused control
@@ -142,6 +151,9 @@ class CUIBuilder(QDialog):
     elif controlType == "slider":
       newWidget = self.newSlider(newPos)
 
+    elif controlType == "float_field":
+      newWidget = self.newFloatField(newPos)
+
     newWidget.deserialize(copy[controlType], duplicate=True)
     newWidget.setup()
     return newWidget
@@ -166,6 +178,9 @@ class CUIBuilder(QDialog):
 
       elif isinstance(widget, widgets.Slider): # for slider
         dialog = SliderDialog(self, widget)
+
+      elif isinstance(widget, widgets.FloatField): # for float field
+        dialog = FloatFieldDialog(self, widget)
 
     elif self.toolbar.remove.isChecked(): # remove tool active => destroy the control
       self.controls[widget.cid].clean_up()
@@ -255,6 +270,25 @@ class CUIBuilder(QDialog):
     return newCheckBox
 
   '''
+  Create new float field
+  '''
+  def newFloatField(self, pos=None, cid=None):
+    if pos is None:
+      pos = QPoint(0, 0)
+
+    if cid is None:
+      cid = self.nextCid()
+
+    newFloatField = widgets.FloatField(p=self, pos=pos, cid=cid)
+    self.controls[cid] = newFloatField
+    newFloatField.focused.connect(self.onWidgetTriggered)
+
+    self.focusedControl = newFloatField
+    self.moveOrigin = pos
+    self.placingState = State.placing_new
+    return newFloatField
+
+  '''
   Save the current layout to file
   '''
   def save(self):
@@ -306,6 +340,8 @@ class CUIBuilder(QDialog):
     else:
       return # abort if not file specified
 
+    self.reset()
+
     with open(fileName, "r") as inputFile:
       jsonData = json.load(inputFile) # parse JSON data
 
@@ -334,6 +370,10 @@ class CUIBuilder(QDialog):
       elif controlType == "checkbox":
         widget = widgets.CheckBox(self)
         widget.stateChanged.connect(self.onWidgetTriggered)
+
+      elif controlType == "float_field":
+        widget = widgets.FloatField(self)
+        widget.focused.connect(self.onWidgetTriggered)
 
       widget.deserialize(control)
       widget.setup(client=False)
@@ -376,6 +416,7 @@ class CUIBuilder(QDialog):
   '''
   def updateBackground(self):
     if self.background is None:
+      self.setStyleSheet("#CUIMainWindow {}")
       return
 
     imagePath = utils.charactersDir()+self.background # get path
@@ -399,3 +440,17 @@ class CUIBuilder(QDialog):
 
     self.background = fileName # set the BG filename
     self.updateBackground() # redraw the BG
+
+  def reset(self):
+    self.resize(512, 512)
+    self.modified = False
+    if self.controls:
+      for control in self.controls.values():
+        control.clean_up()
+    self.controls = {}
+    self.currentCid = -1
+    self.placingState = State.idle
+    self.focusedControl = None
+    self.characterName = None
+    self.background = None
+    self.updateBackground()

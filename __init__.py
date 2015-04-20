@@ -1,9 +1,9 @@
-import cuiViewer
-import cuiBuilder
-
 BUILDER_INSTANCE = None # global builder instance
 VIEWER_INSTANCES = [] # collection of global viewer instances
 DEBUG = False
+
+import cuiViewer
+import cuiBuilder
 
 def builder(dbg=False): # show the builder
   global BUILDER_INSTANCE, DEBUG
